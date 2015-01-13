@@ -23,7 +23,7 @@ Revoke access:
 
 `knife openvpn user revoke office john`
 
-# License and Maintainer
+## License and Maintainer
 
 Maintainer:: LLC Express 42 (<cookbooks@express42.com>)
 
