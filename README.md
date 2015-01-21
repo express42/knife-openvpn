@@ -3,6 +3,8 @@
 A knife plugin for [Express 42 OpenVPN cookbook].
 
 ## Installation
+This plugin is distributed as a Ruby Gem. To install it, run:
+
 `gem install knife-openvpn`
 
 ## Basic Examples
