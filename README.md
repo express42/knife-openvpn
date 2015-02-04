@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/express42/knife-openvpn.svg)](https://travis-ci.org/express42/knife-openvpn)
+
 # knife-openvpn
 ## Description
 A knife plugin for [Express 42 OpenVPN cookbook].
