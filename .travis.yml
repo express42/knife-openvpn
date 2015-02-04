@@ -1,0 +1,7 @@
+language: ruby
+rvm:
+  - 2.1.5
+script:
+  - bundle exec rubocop
+notifications:
+  flowdock: d4fbb65de6c9c868a2dfc4b38fbd34c1
