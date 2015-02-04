@@ -1,0 +1,10 @@
+AbcSize:
+    Enabled: false
+GuardClause:
+  Enabled: false
+Documentation:
+  Enabled: false
+LineLength:
+    Enabled: false
+MethodLength:
+    Enabled: false
