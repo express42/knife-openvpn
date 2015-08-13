@@ -68,7 +68,7 @@ module OpenvpnPlugin
       name
     end
 
-    def get_databag_secret
+    def load_databag_secret
       databag_secret_file = File.join(Dir.pwd, '.chef/encrypted_data_bag_secret')
       secret = Chef::EncryptedDataBagItem.load_secret(databag_secret_file)
       secret
@@ -171,17 +171,17 @@ module OpenvpnPlugin
       databag_path = get_databag_path server_name
       item_hash['id'] = id
       item_path = File.join(databag_path, "#{id}.json")
-      secret = get_databag_secret
+      secret = load_databag_secret
       encrypted_data = Chef::EncryptedDataBagItem.encrypt_data_bag_item(item_hash, secret)
-      unless File.exist? item_path
-        File.write item_path, JSON.pretty_generate(encrypted_data)
-      else
+      if File.exist? item_path
         fail_with "#{item_path} already exists"
+      else
+        File.write item_path, JSON.pretty_generate(encrypted_data)
       end
     end
 
     def load_databag_item(databag_name, item_id)
-      secret = get_databag_secret
+      secret = load_databag_secret
       # puts "Loading [#{databag_name}:#{item_id}]"
       item = Chef::EncryptedDataBagItem.load(databag_name, item_id, secret)
       item
@@ -223,9 +223,7 @@ module OpenvpnPlugin
     end
 
     def check_arguments
-      unless name_args.size == 1
-        fail_with 'Specify NAME of new openvpn server!'
-      end
+      fail_with 'Specify NAME of new openvpn server!' unless name_args.size == 1
     end
 
     def create_databag_dir(server_name)
@@ -325,7 +323,7 @@ module OpenvpnPlugin
     def export_user(server_name, user_name)
       databag_name = get_databag_name server_name
       ca_item = load_databag_item(databag_name, 'openvpn-ca')
-      ca_cert, ca_key = load_cert_and_key ca_item['cert'], ca_item['key']
+      ca_cert, _ca_key = load_cert_and_key ca_item['cert'], ca_item['key']
 
       user_item = load_databag_item(databag_name, user_name)
       user_cert, user_key = load_cert_and_key user_item['cert'], user_item['key']
@@ -419,7 +417,7 @@ module OpenvpnPlugin
         revoke_info = []
       end
       user_item = load_databag_item(databag_name, user_name)
-      user_cert, user_key = load_cert_and_key user_item['cert'], user_item['key']
+      user_cert, _user_key = load_cert_and_key user_item['cert'], user_item['key']
       user_revoke_info = [[user_cert.serial, now, 0]]
       new_revoke_info = revoke_info + user_revoke_info
       new_crl = add_user_to_crl ca_cert, ca_key, old_crl, new_revoke_info

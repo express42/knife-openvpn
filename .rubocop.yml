@@ -1,10 +1,14 @@
-AbcSize:
-    Enabled: false
-GuardClause:
+Metrics/AbcSize:
   Enabled: false
-Documentation:
+Style/GuardClause:
   Enabled: false
-LineLength:
-    Enabled: false
-MethodLength:
-    Enabled: false
+Style/Documentation:
+  Enabled: false
+Metrics/LineLength:
+  Enabled: false
+Metrics/MethodLength:
+  Enabled: false
+Metrics/ClassLength:
+  Max: 150
+Metrics/ParameterLists:
+  Enabled: false
