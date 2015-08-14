@@ -95,7 +95,7 @@ module OpenvpnPlugin
       entity_cert.add_extension(ef.create_extension('subjectKeyIdentifier', 'hash', false))
     end
 
-    def generate_cert_and_key(subject, cert_config, selfsigned = false, ca_cert = nil, ca_key = nil)
+    def generate_cert_and_key(subject, cert_config, selfsigned = false, ca_cert = nil, ca_key = nil, is_user = false)
       key = OpenSSL::PKey::RSA.generate(cert_config['rsa_keysize'])
       cert = OpenSSL::X509::Certificate.new
       cert.version = 2
@@ -118,6 +118,15 @@ module OpenvpnPlugin
         cert.issuer = ca_cert.subject
         add_endentity_extensions(cert, ca_cert)
         cert.sign(ca_key, OpenSSL::Digest::SHA1.new)
+      end
+
+      if is_user
+        require 'highline/import'
+        passphrase = ask('Enter a passphrase [blank for passphraseless]: ') { |q| q.echo = false }
+        unless passphrase == ''
+          cipher = OpenSSL::Cipher.new('AES-256-CBC')
+          key = key.export(cipher, passphrase)
+        end
       end
 
       [cert, key]
@@ -292,8 +301,8 @@ module OpenvpnPlugin
       config_item = load_databag_item(databag_name, 'openvpn-config')
       cert_config = config_item.to_hash
       user_subject = make_name user_name, cert_config
-      user_cert, user_key = generate_cert_and_key user_subject, cert_config, false, ca_cert, ca_key
-      save_databag_item(user_name, server_name, 'cert' => user_cert.to_pem, 'key' => user_key.to_pem)
+      user_cert, user_key = generate_cert_and_key user_subject, cert_config, false, ca_cert, ca_key, true
+      save_databag_item(user_name, server_name, 'cert' => user_cert.to_pem, 'key' => user_key.to_s)
       ui.info "Done, now you can upload #{databag_name}/#{user_name}.json"
     end
 
