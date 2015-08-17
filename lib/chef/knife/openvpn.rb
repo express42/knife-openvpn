@@ -376,14 +376,15 @@ module OpenvpnPlugin
       config_content = ''
       newline = "\n"
       node = search_result[0]
+      config = Chef::Mixin::DeepMerge.merge(node['openvpn']['default'].to_hash, node['openvpn'][server_name].to_hash)
       config_content << 'client' << newline
-      config_content << "dev  #{node['openvpn'][server_name]['dev']}" << newline
-      config_content << "proto  #{node['openvpn'][server_name]['proto']}" << newline
+      config_content << "dev  #{config['dev']}" << newline
+      config_content << "proto  #{config['proto']}" << newline
       search_result[0].each do |result|
         config_content << "remote  #{result['openvpn'][server_name]['remote_host']} "
-        config_content << "#{result['openvpn'][server_name]['port']}" << newline
+        config_content << "#{config['port']}" << newline
       end
-      config_content << "verb  #{node['openvpn'][server_name]['verb']}" << newline
+      config_content << "verb  #{config['verb']}" << newline
       config_content << 'comp-lzo' << newline
       config_content << 'ca ca.crt' << newline
       config_content << "cert #{user_name}.crt" << newline
