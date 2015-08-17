@@ -337,6 +337,9 @@ module OpenvpnPlugin
       ca_item = load_databag_item(databag_name, 'openvpn-ca')
       ca_cert, _ca_key = load_cert_and_key ca_item['cert'], ca_item['key']
 
+      ta_item = load_databag_item(databag_name, 'openvpn-ta')
+      ta_key = ta_item['ta']
+
       user_item = load_databag_item(databag_name, user_name)
       user_cert, user_key = load_cert_and_key user_item['cert'], user_item['key']
       tmpdir = Dir.mktmpdir
@@ -348,6 +351,7 @@ module OpenvpnPlugin
         export_file "#{user_dir}/ca.crt", ca_cert.to_pem
         export_file "#{user_dir}/#{user_name}.crt", user_cert.to_pem
         export_file "#{user_dir}/#{user_name}.key", user_key.to_pem
+        export_file "#{user_dir}/ta.key", ta_key
         config_content = generate_client_config server_name, user_name
         export_file "#{user_dir}/#{user_name}.ovpn", config_content
         exitcode = system("cd #{tmpdir} && tar cfz /tmp/#{user_name}-vpn.tar.gz *")
@@ -389,6 +393,7 @@ module OpenvpnPlugin
       config_content << 'ca ca.crt' << newline
       config_content << "cert #{user_name}.crt" << newline
       config_content << "key #{user_name}.key" << newline
+      config_content << "tls-auth ta.key 1" << newline if config['use_tls_auth']
       config_content << 'nobind' << newline
       config_content << 'persist-key' << newline
       config_content << 'persist-tun' << newline
