@@ -374,7 +374,7 @@ module OpenvpnPlugin
       query = "openvpn_server_name:#{server_name}"
       query_nodes = Chef::Search::Query.new
       search_result = query_nodes.search('node', query)[0]
-      unless search_result.length == 1
+      unless search_result.length >= 1
         fail_with "Found #{search_result.length} vpn servers for #{server_name}"
       end
       config_content = ''
