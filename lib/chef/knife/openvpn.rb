@@ -89,10 +89,11 @@ module OpenvpnPlugin
       ca_cert.add_extension(ef.create_extension('authorityKeyIdentifier', 'keyid:always', false))
     end
 
-    def add_endentity_extensions(entity_cert, ca_cert)
+    def add_endentity_extensions(entity_cert, ca_cert, is_user = false)
       ef = get_extensions_factory entity_cert, ca_cert
       entity_cert.add_extension(ef.create_extension('keyUsage', 'digitalSignature', true))
       entity_cert.add_extension(ef.create_extension('subjectKeyIdentifier', 'hash', false))
+      entity_cert.add_extension(ef.create_extension('nsCertType', 'server')) unless is_user
     end
 
     def generate_cert_and_key(subject, cert_config, selfsigned = false, ca_cert = nil, ca_key = nil, is_user = false)
@@ -116,7 +117,7 @@ module OpenvpnPlugin
         end
         cert.subject = subject
         cert.issuer = ca_cert.subject
-        add_endentity_extensions(cert, ca_cert)
+        add_endentity_extensions(cert, ca_cert, is_user)
         cert.sign(ca_key, OpenSSL::Digest::SHA1.new)
       end
 
