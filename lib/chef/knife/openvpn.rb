@@ -384,7 +384,7 @@ module OpenvpnPlugin
       config_content << 'client' << newline
       config_content << "dev  #{config['dev']}" << newline
       config_content << "proto  #{config['proto']}" << newline
-      search_result[0].each do |result|
+      search_result.each do |result|
         config_content << "remote  #{result['openvpn'][server_name]['remote_host']} "
         config_content << "#{config['port']}" << newline
       end
