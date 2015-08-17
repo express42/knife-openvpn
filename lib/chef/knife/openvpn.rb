@@ -110,7 +110,7 @@ module OpenvpnPlugin
         cert.subject = subject
         cert.issuer = subject
         add_ca_extensions(cert)
-        cert.sign(key, OpenSSL::Digest::SHA1.new)
+        cert.sign(key, OpenSSL::Digest::SHA256.new)
       else
         if ca_cert.nil? || ca_key.nil?
           fail_with "CA key or cert isn't specified"
@@ -118,7 +118,7 @@ module OpenvpnPlugin
         cert.subject = subject
         cert.issuer = ca_cert.subject
         add_endentity_extensions(cert, ca_cert, is_user)
-        cert.sign(ca_key, OpenSSL::Digest::SHA1.new)
+        cert.sign(ca_key, OpenSSL::Digest::SHA256.new)
       end
 
       if is_user
@@ -221,7 +221,7 @@ module OpenvpnPlugin
       server_cert, server_key = generate_cert_and_key server_subject, cert_config, false, ca_cert, ca_key
       dh_params = make_dh_params cert_config
       ta_key = OpenSSL::PKey::RSA.generate(2048)
-      crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA1.new)
+      crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA256.new)
       databag_path = get_databag_path vpn_server_name
       ui.info "Creating data bag directory at #{databag_path}"
       create_databag_dir vpn_server_name
@@ -434,7 +434,7 @@ module OpenvpnPlugin
         old_crl = OpenSSL::X509::CRL.new crl_item['crl']
         revoke_info = crl_item['revoke_info']
       rescue
-        old_crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA1.new)
+        old_crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA256.new)
         revoke_info = []
       end
       user_item = load_databag_item(databag_name, user_name)
@@ -447,7 +447,7 @@ module OpenvpnPlugin
     end
 
     def add_user_to_crl(ca_cert, ca_key, old_crl, revoke_info)
-      new_crl = issue_crl(revoke_info, old_crl.version + 1, Time.at(Time.now.to_i), Time.at(Time.now.to_i) + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA1.new)
+      new_crl = issue_crl(revoke_info, old_crl.version + 1, Time.at(Time.now.to_i), Time.at(Time.now.to_i) + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA256.new)
       new_crl
     end
 
