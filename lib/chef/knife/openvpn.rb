@@ -219,6 +219,7 @@ module OpenvpnPlugin
       server_subject = make_name vpn_server_name, cert_config
       server_cert, server_key = generate_cert_and_key server_subject, cert_config, false, ca_cert, ca_key
       dh_params = make_dh_params cert_config
+      ta_key = OpenSSL::PKey::RSA.generate(2048)
       crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA1.new)
       databag_path = get_databag_path vpn_server_name
       ui.info "Creating data bag directory at #{databag_path}"
@@ -229,6 +230,7 @@ module OpenvpnPlugin
 
       save_databag_item('openvpn-server', vpn_server_name, 'cert' => server_cert.to_pem, 'key' => server_key.to_pem)
       save_databag_item('openvpn-dh', vpn_server_name, 'dh' => dh_params.to_pem)
+      save_databag_item('openvpn-ta', vpn_server_name, 'ta' => ta_key.to_pem)
     end
 
     def check_arguments
