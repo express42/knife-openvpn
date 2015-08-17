@@ -379,8 +379,10 @@ module OpenvpnPlugin
       config_content << 'client' << newline
       config_content << "dev  #{node['openvpn'][server_name]['dev']}" << newline
       config_content << "proto  #{node['openvpn'][server_name]['proto']}" << newline
-      config_content << "remote  #{node['openvpn'][server_name]['remote_host']} "
-      config_content << "#{node['openvpn'][server_name]['port']}" << newline
+      search_result[0].each do |result|
+        config_content << "remote  #{result['openvpn'][server_name]['remote_host']} "
+        config_content << "#{result['openvpn'][server_name]['port']}" << newline
+      end
       config_content << "verb  #{node['openvpn'][server_name]['verb']}" << newline
       config_content << 'comp-lzo' << newline
       config_content << 'ca ca.crt' << newline
