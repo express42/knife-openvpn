@@ -220,7 +220,6 @@ module OpenvpnPlugin
       server_subject = make_name vpn_server_name, cert_config
       server_cert, server_key = generate_cert_and_key server_subject, cert_config, false, ca_cert, ca_key
       dh_params = make_dh_params cert_config
-      ta_key = OpenSSL::PKey::RSA.generate(2048)
       crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA256.new)
       databag_path = get_databag_path vpn_server_name
       ui.info "Creating data bag directory at #{databag_path}"
@@ -231,7 +230,6 @@ module OpenvpnPlugin
 
       save_databag_item('openvpn-server', vpn_server_name, 'cert' => server_cert.to_pem, 'key' => server_key.to_pem)
       save_databag_item('openvpn-dh', vpn_server_name, 'dh' => dh_params.to_pem)
-      save_databag_item('openvpn-ta', vpn_server_name, 'ta' => ta_key.to_pem)
     end
 
     def check_arguments
@@ -337,8 +335,13 @@ module OpenvpnPlugin
       ca_item = load_databag_item(databag_name, 'openvpn-ca')
       ca_cert, _ca_key = load_cert_and_key ca_item['cert'], ca_item['key']
 
-      ta_item = load_databag_item(databag_name, 'openvpn-ta')
-      ta_key = ta_item['ta']
+      ta_key = ''
+      begin
+        ta_item = load_databag_item(databag_name, 'openvpn-ta')
+        ta_key = ta_item['ta']
+      rescue Net::HTTPServerException
+        ui.warn 'Unable to load openvpn-ta, proceding without it. (Ignore unless you use tls-auth)'
+      end
 
       user_item = load_databag_item(databag_name, user_name)
       user_cert, user_key = load_cert_and_key user_item['cert'], user_item['key']
@@ -351,7 +354,7 @@ module OpenvpnPlugin
         export_file "#{user_dir}/ca.crt", ca_cert.to_pem
         export_file "#{user_dir}/#{user_name}.crt", user_cert.to_pem
         export_file "#{user_dir}/#{user_name}.key", user_key.to_pem
-        export_file "#{user_dir}/ta.key", ta_key
+        export_file "#{user_dir}/ta.key", ta_key unless ta_key.empty?
         config_content = generate_client_config server_name, user_name
         export_file "#{user_dir}/#{user_name}.ovpn", config_content
         exitcode = system("cd #{tmpdir} && tar cfz /tmp/#{user_name}-vpn.tar.gz *")
