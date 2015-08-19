@@ -68,7 +68,7 @@ module OpenvpnPlugin
       name
     end
 
-    def get_databag_secret
+    def load_databag_secret
       databag_secret_file = File.join(Dir.pwd, '.chef/encrypted_data_bag_secret')
       secret = Chef::EncryptedDataBagItem.load_secret(databag_secret_file)
       secret
@@ -89,13 +89,14 @@ module OpenvpnPlugin
       ca_cert.add_extension(ef.create_extension('authorityKeyIdentifier', 'keyid:always', false))
     end
 
-    def add_endentity_extensions(entity_cert, ca_cert)
+    def add_endentity_extensions(entity_cert, ca_cert, is_user = false)
       ef = get_extensions_factory entity_cert, ca_cert
       entity_cert.add_extension(ef.create_extension('keyUsage', 'digitalSignature', true))
       entity_cert.add_extension(ef.create_extension('subjectKeyIdentifier', 'hash', false))
+      entity_cert.add_extension(ef.create_extension('nsCertType', 'server')) unless is_user
     end
 
-    def generate_cert_and_key(subject, cert_config, selfsigned = false, ca_cert = nil, ca_key = nil)
+    def generate_cert_and_key(subject, cert_config, selfsigned = false, ca_cert = nil, ca_key = nil, is_user = false)
       key = OpenSSL::PKey::RSA.generate(cert_config['rsa_keysize'])
       cert = OpenSSL::X509::Certificate.new
       cert.version = 2
@@ -109,15 +110,24 @@ module OpenvpnPlugin
         cert.subject = subject
         cert.issuer = subject
         add_ca_extensions(cert)
-        cert.sign(key, OpenSSL::Digest::SHA1.new)
+        cert.sign(key, OpenSSL::Digest::SHA256.new)
       else
         if ca_cert.nil? || ca_key.nil?
           fail_with "CA key or cert isn't specified"
         end
         cert.subject = subject
         cert.issuer = ca_cert.subject
-        add_endentity_extensions(cert, ca_cert)
-        cert.sign(ca_key, OpenSSL::Digest::SHA1.new)
+        add_endentity_extensions(cert, ca_cert, is_user)
+        cert.sign(ca_key, OpenSSL::Digest::SHA256.new)
+      end
+
+      if is_user
+        require 'highline/import'
+        passphrase = ask('Enter a passphrase [blank for passphraseless]: ') { |q| q.echo = false }
+        unless passphrase == ''
+          cipher = OpenSSL::Cipher.new('AES-256-CBC')
+          key = key.export(cipher, passphrase)
+        end
       end
 
       [cert, key]
@@ -171,17 +181,17 @@ module OpenvpnPlugin
       databag_path = get_databag_path server_name
       item_hash['id'] = id
       item_path = File.join(databag_path, "#{id}.json")
-      secret = get_databag_secret
+      secret = load_databag_secret
       encrypted_data = Chef::EncryptedDataBagItem.encrypt_data_bag_item(item_hash, secret)
-      unless File.exist? item_path
-        File.write item_path, JSON.pretty_generate(encrypted_data)
-      else
+      if File.exist? item_path
         fail_with "#{item_path} already exists"
+      else
+        File.write item_path, JSON.pretty_generate(encrypted_data)
       end
     end
 
     def load_databag_item(databag_name, item_id)
-      secret = get_databag_secret
+      secret = load_databag_secret
       # puts "Loading [#{databag_name}:#{item_id}]"
       item = Chef::EncryptedDataBagItem.load(databag_name, item_id, secret)
       item
@@ -210,7 +220,7 @@ module OpenvpnPlugin
       server_subject = make_name vpn_server_name, cert_config
       server_cert, server_key = generate_cert_and_key server_subject, cert_config, false, ca_cert, ca_key
       dh_params = make_dh_params cert_config
-      crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA1.new)
+      crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA256.new)
       databag_path = get_databag_path vpn_server_name
       ui.info "Creating data bag directory at #{databag_path}"
       create_databag_dir vpn_server_name
@@ -223,9 +233,7 @@ module OpenvpnPlugin
     end
 
     def check_arguments
-      unless name_args.size == 1
-        fail_with 'Specify NAME of new openvpn server!'
-      end
+      fail_with 'Specify NAME of new openvpn server!' unless name_args.size == 1
     end
 
     def create_databag_dir(server_name)
@@ -294,8 +302,8 @@ module OpenvpnPlugin
       config_item = load_databag_item(databag_name, 'openvpn-config')
       cert_config = config_item.to_hash
       user_subject = make_name user_name, cert_config
-      user_cert, user_key = generate_cert_and_key user_subject, cert_config, false, ca_cert, ca_key
-      save_databag_item(user_name, server_name, 'cert' => user_cert.to_pem, 'key' => user_key.to_pem)
+      user_cert, user_key = generate_cert_and_key user_subject, cert_config, false, ca_cert, ca_key, true
+      save_databag_item(user_name, server_name, 'cert' => user_cert.to_pem, 'key' => user_key.to_s)
       ui.info "Done, now you can upload #{databag_name}/#{user_name}.json"
     end
 
@@ -325,7 +333,15 @@ module OpenvpnPlugin
     def export_user(server_name, user_name)
       databag_name = get_databag_name server_name
       ca_item = load_databag_item(databag_name, 'openvpn-ca')
-      ca_cert, ca_key = load_cert_and_key ca_item['cert'], ca_item['key']
+      ca_cert, _ca_key = load_cert_and_key ca_item['cert'], ca_item['key']
+
+      ta_key = ''
+      begin
+        ta_item = load_databag_item(databag_name, 'openvpn-ta')
+        ta_key = ta_item['ta']
+      rescue Net::HTTPServerException
+        ui.warn 'Unable to load openvpn-ta, proceding without it. (Ignore unless you use tls-auth)'
+      end
 
       user_item = load_databag_item(databag_name, user_name)
       user_cert, user_key = load_cert_and_key user_item['cert'], user_item['key']
@@ -338,6 +354,7 @@ module OpenvpnPlugin
         export_file "#{user_dir}/ca.crt", ca_cert.to_pem
         export_file "#{user_dir}/#{user_name}.crt", user_cert.to_pem
         export_file "#{user_dir}/#{user_name}.key", user_key.to_pem
+        export_file "#{user_dir}/ta.key", ta_key unless ta_key.empty?
         config_content = generate_client_config server_name, user_name
         export_file "#{user_dir}/#{user_name}.ovpn", config_content
         exitcode = system("cd #{tmpdir} && tar cfz /tmp/#{user_name}-vpn.tar.gz *")
@@ -360,22 +377,27 @@ module OpenvpnPlugin
       query = "openvpn_server_name:#{server_name}"
       query_nodes = Chef::Search::Query.new
       search_result = query_nodes.search('node', query)[0]
-      unless search_result.length == 1
+      unless search_result.length >= 1
         fail_with "Found #{search_result.length} vpn servers for #{server_name}"
       end
       config_content = ''
       newline = "\n"
       node = search_result[0]
+      config = Chef::Mixin::DeepMerge.merge(node['openvpn']['default'].to_hash, node['openvpn'][server_name].to_hash)
       config_content << 'client' << newline
-      config_content << "dev  #{node['openvpn'][server_name]['dev']}" << newline
-      config_content << "proto  #{node['openvpn'][server_name]['proto']}" << newline
-      config_content << "remote  #{node['openvpn'][server_name]['remote_host']} "
-      config_content << "#{node['openvpn'][server_name]['port']}" << newline
-      config_content << "verb  #{node['openvpn'][server_name]['verb']}" << newline
+      config_content << "dev  #{config['dev']}" << newline
+      config_content << "proto  #{config['proto']}" << newline
+      search_result.each do |result|
+        config_content << "remote  #{result['openvpn'][server_name]['remote_host']} "
+        config_content << "#{config['port']}" << newline
+      end
+      config_content << "verb  #{config['verb']}" << newline
       config_content << 'comp-lzo' << newline
       config_content << 'ca ca.crt' << newline
       config_content << "cert #{user_name}.crt" << newline
       config_content << "key #{user_name}.key" << newline
+      config_content << "tls-auth ta.key 1" << newline if config['use_tls_auth']
+      config_content << "ns-cert-type server" << newline
       config_content << 'nobind' << newline
       config_content << 'persist-key' << newline
       config_content << 'persist-tun' << newline
@@ -415,11 +437,11 @@ module OpenvpnPlugin
         old_crl = OpenSSL::X509::CRL.new crl_item['crl']
         revoke_info = crl_item['revoke_info']
       rescue
-        old_crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA1.new)
+        old_crl = issue_crl([], 1, now, now + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA256.new)
         revoke_info = []
       end
       user_item = load_databag_item(databag_name, user_name)
-      user_cert, user_key = load_cert_and_key user_item['cert'], user_item['key']
+      user_cert, _user_key = load_cert_and_key user_item['cert'], user_item['key']
       user_revoke_info = [[user_cert.serial, now, 0]]
       new_revoke_info = revoke_info + user_revoke_info
       new_crl = add_user_to_crl ca_cert, ca_key, old_crl, new_revoke_info
@@ -428,7 +450,7 @@ module OpenvpnPlugin
     end
 
     def add_user_to_crl(ca_cert, ca_key, old_crl, revoke_info)
-      new_crl = issue_crl(revoke_info, old_crl.version + 1, Time.at(Time.now.to_i), Time.at(Time.now.to_i) + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA1.new)
+      new_crl = issue_crl(revoke_info, old_crl.version + 1, Time.at(Time.now.to_i), Time.at(Time.now.to_i) + 3600, [], ca_cert, ca_key, OpenSSL::Digest::SHA256.new)
       new_crl
     end
 
