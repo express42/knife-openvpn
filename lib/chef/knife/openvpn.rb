@@ -37,7 +37,7 @@ module OpenvpnPlugin
     end
 
     def check_databag_secret
-      databag_secret_file = File.join(Dir.pwd, '.chef/encrypted_data_bag_secret')
+      databag_secret_file = Chef::Config[:knife][:secret_file] || File.join(Dir.pwd, '.chef/encrypted_data_bag_secret')
       unless File.exist? databag_secret_file
         fail_with "Can't find encrypted databag secret file at #{databag_secret_file}."
       end
