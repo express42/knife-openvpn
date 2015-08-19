@@ -344,7 +344,7 @@ module OpenvpnPlugin
       end
 
       user_item = load_databag_item(databag_name, user_name)
-      user_cert, user_key = load_cert_and_key user_item['cert'], user_item['key']
+      user_cert, _user_key = load_cert_and_key user_item['cert'], user_item['key']
       tmpdir = Dir.mktmpdir
       ui.info "tmpdir: #{tmpdir}"
       begin
@@ -353,7 +353,7 @@ module OpenvpnPlugin
         ui.info "userdir: #{user_dir}"
         export_file "#{user_dir}/ca.crt", ca_cert.to_pem
         export_file "#{user_dir}/#{user_name}.crt", user_cert.to_pem
-        export_file "#{user_dir}/#{user_name}.key", user_key.to_pem
+        export_file "#{user_dir}/#{user_name}.key", user_item['key'].to_s
         export_file "#{user_dir}/ta.key", ta_key unless ta_key.empty?
         config_content = generate_client_config server_name, user_name
         export_file "#{user_dir}/#{user_name}.ovpn", config_content
