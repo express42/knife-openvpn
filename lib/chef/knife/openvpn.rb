@@ -396,8 +396,8 @@ module OpenvpnPlugin
       config_content << 'ca ca.crt' << newline
       config_content << "cert #{user_name}.crt" << newline
       config_content << "key #{user_name}.key" << newline
-      config_content << "tls-auth ta.key 1" << newline if config['use_tls_auth']
-      config_content << "ns-cert-type server" << newline
+      config_content << 'tls-auth ta.key 1' << newline if config['use_tls_auth']
+      config_content << 'ns-cert-type server' << newline
       config_content << 'nobind' << newline
       config_content << 'persist-key' << newline
       config_content << 'persist-tun' << newline
