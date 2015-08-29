@@ -37,7 +37,7 @@ module OpenvpnPlugin
     end
 
     def check_databag_secret
-      databag_secret_file = Chef::Config[:knife][:secret_file] || File.join(Dir.pwd, '.chef/encrypted_data_bag_secret')
+      databag_secret_file = File.join(Dir.pwd, config[:databag_secret_file]) || Chef::Config[:knife][:secret_file]
       unless File.exist? databag_secret_file
         fail_with "Can't find encrypted databag secret file at #{databag_secret_file}."
       end
@@ -69,7 +69,7 @@ module OpenvpnPlugin
     end
 
     def load_databag_secret
-      databag_secret_file = File.join(Dir.pwd, '.chef/encrypted_data_bag_secret')
+      databag_secret_file = File.join(Dir.pwd, config[:databag_secret_file]) || Chef::Config[:knife][:secret_file]
       secret = Chef::EncryptedDataBagItem.load_secret(databag_secret_file)
       secret
     end
@@ -200,9 +200,15 @@ module OpenvpnPlugin
 
   class OpenvpnServerCreate < Openvpn
     banner 'knife openvpn server create NAME (options)'
+
     deps do
       require 'readline'
     end
+
+    option :databag_secret_file,
+      :long => "--secret-file PATH",
+      :description => "Specifies path to encrypred data bag secret file.",
+      :default => ".chef/encrypted_data_bag_secret"
 
     def run
       check_arguments
@@ -286,6 +292,11 @@ module OpenvpnPlugin
   class OpenvpnUserCreate < Openvpn
     banner 'knife openvpn user create SERVERNAME USERNAME (options)'
 
+    option :databag_secret_file,
+      :long => "--secret-file PATH",
+      :description => "Specifies path to encrypred data bag secret file.",
+      :default => ".chef/encrypted_data_bag_secret"
+
     def run
       check_arguments
       server_name = name_args[0]
@@ -320,6 +331,11 @@ module OpenvpnPlugin
     deps do
       require 'chef/search/query'
     end
+
+    option :databag_secret_file,
+      :long => "--secret-file PATH",
+      :description => "Specifies path to encrypred data bag secret file.",
+      :default => ".chef/encrypted_data_bag_secret"
 
     def run
       check_arguments
@@ -417,6 +433,11 @@ module OpenvpnPlugin
     deps do
       require 'chef/search/query'
     end
+
+    option :databag_secret_file,
+      :long => "--secret-file PATH",
+      :description => "Specifies path to encrypred data bag secret file.",
+      :default => ".chef/encrypted_data_bag_secret"
 
     def run
       check_arguments
