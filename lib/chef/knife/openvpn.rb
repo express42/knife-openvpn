@@ -207,7 +207,7 @@ module OpenvpnPlugin
     option :databag_secret_file,
      long: '--secret-file PATH',
      description: 'Specifies path to encrypred data bag secret file.',
-     default:'.chef/encrypted_data_bag_secret'
+     default: '.chef/encrypted_data_bag_secret'
 
     def run
       check_arguments
@@ -292,9 +292,9 @@ module OpenvpnPlugin
     banner 'knife openvpn user create SERVERNAME USERNAME (options)'
 
     option :databag_secret_file,
-      :long => '--secret-file PATH',
-      :description => 'Specifies path to encrypred data bag secret file.',
-      :default => '.chef/encrypted_data_bag_secret'
+           long: '--secret-file PATH',
+           description: 'Specifies path to encrypred data bag secret file.',
+           default: '.chef/encrypted_data_bag_secret'
 
     def run
       check_arguments
@@ -332,9 +332,9 @@ module OpenvpnPlugin
     end
 
     option :databag_secret_file,
-     long: '--secret-file PATH',
-     description: 'Specifies path to encrypred data bag secret file.',
-     default: '.chef/encrypted_data_bag_secret'
+           long: '--secret-file PATH',
+           description: 'Specifies path to encrypred data bag secret file.',
+           default: '.chef/encrypted_data_bag_secret'
 
     def run
       check_arguments
@@ -434,9 +434,9 @@ module OpenvpnPlugin
     end
 
     option :databag_secret_file,
-     long: '--secret-file PATH',
-     description: 'Specifies path to encrypred data bag secret file.',
-     default: '.chef/encrypted_data_bag_secret'
+           long: '--secret-file PATH',
+           description: 'Specifies path to encrypred data bag secret file.',
+           default: '.chef/encrypted_data_bag_secret'
 
     def run
       check_arguments
