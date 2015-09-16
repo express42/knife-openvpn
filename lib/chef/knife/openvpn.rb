@@ -361,11 +361,11 @@ module OpenvpnPlugin
       user_item = load_databag_item(databag_name, user_name)
       user_cert, _user_key = load_cert_and_key user_item['cert'], user_item['key']
       tmpdir = Dir.mktmpdir
-      ui.debug "created tmpdir: #{tmpdir}"
+      ui.msg "created tmpdir: #{tmpdir}"
       begin
         user_dir = "#{tmpdir}/#{user_name}-vpn"
         Dir.mkdir user_dir
-        ui.debug "created userdir: #{user_dir}"
+        ui.msg "created userdir: #{user_dir}"
         export_file "#{user_dir}/ca.crt", ca_cert.to_pem
         export_file "#{user_dir}/#{user_name}.crt", user_cert.to_pem
         export_file "#{user_dir}/#{user_name}.key", user_item['key'].to_s
@@ -392,7 +392,7 @@ module OpenvpnPlugin
       query = "openvpn_server_name:#{server_name}"
       query_nodes = Chef::Search::Query.new
       search_result = query_nodes.search('node', query)[0]
-      unless search_result.length < 1
+      if search_result.length < 1
         fail_with "Cant find vpn server named '#{server_name}'"
       end
       config_content = ''
