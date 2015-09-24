@@ -161,9 +161,13 @@ module OpenvpnPlugin
       crl
     end
 
-    def load_cert_and_key(cert_str, key_str)
+    def load_cert_and_key(cert_str, key_str, force = false)
       cert = OpenSSL::X509::Certificate.new cert_str
-      key = OpenSSL::PKey::RSA.new key_str
+      key = if force
+              key_str
+            else
+              OpenSSL::PKey::RSA.new key_str
+            end
       [cert, key]
     end
 
@@ -438,6 +442,11 @@ module OpenvpnPlugin
            description: 'Specifies path to encrypred data bag secret file.',
            default: '.chef/encrypted_data_bag_secret'
 
+    option :force,
+           long: '--force',
+           description: 'Force a user revoke without the key passphrase.',
+           default: false
+
     def run
       check_arguments
       server_name = name_args[0]
@@ -461,7 +470,7 @@ module OpenvpnPlugin
         revoke_info = []
       end
       user_item = load_databag_item(databag_name, user_name)
-      user_cert, _user_key = load_cert_and_key user_item['cert'], user_item['key']
+      user_cert, _user_key = load_cert_and_key user_item['cert'], user_item['key'], config[:force]
       user_revoke_info = [[user_cert.serial, now, 0]]
       new_revoke_info = revoke_info + user_revoke_info
       new_crl = add_user_to_crl ca_cert, ca_key, old_crl, new_revoke_info
