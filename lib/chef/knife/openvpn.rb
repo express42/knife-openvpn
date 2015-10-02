@@ -34,6 +34,7 @@ module OpenvpnPlugin
       require 'chef/encrypted_data_bag_item'
       require 'json'
       require 'openssl'
+      require 'time'
     end
 
     def check_databag_secret
@@ -142,8 +143,16 @@ module OpenvpnPlugin
       crl.next_update = nextup
       revoke_info.each do|rserial, time, reason_code|
         revoked = OpenSSL::X509::Revoked.new
-        revoked.serial = rserial
-        revoked.time = time
+        if rserial.is_a? OpenSSL::BN
+          revoked.serial = rserial
+        else
+          revoked.serial = OpenSSL::BN.new(rserial)
+        end
+        if time.is_a? Time
+          revoked.time = time
+        else
+          revoked.time = Time.parse(time)
+        end
         enum = OpenSSL::ASN1::Enumerated(reason_code)
         ext = OpenSSL::X509::Extension.new('CRLReason', enum)
         revoked.add_extension(ext)
@@ -181,16 +190,16 @@ module OpenvpnPlugin
       databag_name
     end
 
-    def save_databag_item(id, server_name, item_hash)
+    def save_databag_item(id, server_name, item_hash, force = false)
       databag_path = get_databag_path server_name
       item_hash['id'] = id
       item_path = File.join(databag_path, "#{id}.json")
       secret = load_databag_secret
       encrypted_data = Chef::EncryptedDataBagItem.encrypt_data_bag_item(item_hash, secret)
-      if File.exist? item_path
-        fail_with "#{item_path} already exists"
-      else
+      if force || !File.exist?(item_path)
         File.write item_path, JSON.pretty_generate(encrypted_data)
+      else
+        fail_with "#{item_path} already exists"
       end
     end
 
@@ -474,7 +483,7 @@ module OpenvpnPlugin
       user_revoke_info = [[user_cert.serial, now, 0]]
       new_revoke_info = revoke_info + user_revoke_info
       new_crl = add_user_to_crl ca_cert, ca_key, old_crl, new_revoke_info
-      save_databag_item('openvpn-crl', server_name, 'crl' => new_crl.to_pem, 'revoke_info' => new_revoke_info)
+      save_databag_item('openvpn-crl', server_name, { 'crl' => new_crl.to_pem, 'revoke_info' => new_revoke_info }, true)
       ui.info "revoked #{user_name}, do not forget to upload CRL databag item"
     end
 
