@@ -9,6 +9,6 @@ Metrics/LineLength:
 Metrics/MethodLength:
   Enabled: false
 Metrics/ClassLength:
-  Max: 153
+  Max: 200
 Metrics/ParameterLists:
   Enabled: false
