@@ -135,7 +135,7 @@ module OpenvpnPlugin
     end
 
     def issue_crl(revoke_info, serial, lastup, nextup, extensions,
-                 issuer, issuer_key, digest)
+                  issuer, issuer_key, digest)
       crl = OpenSSL::X509::CRL.new
       crl.issuer = issuer.subject
       crl.version = 1
@@ -374,11 +374,9 @@ module OpenvpnPlugin
       user_item = load_databag_item(databag_name, user_name)
       user_cert, _user_key = load_cert_and_key user_item['cert'], user_item['key']
       tmpdir = Dir.mktmpdir
-      #ui.msg "created tmpdir: #{tmpdir}"
       begin
         user_dir = "#{tmpdir}/#{user_name}-vpn"
         Dir.mkdir user_dir
-        #ui.msg "created userdir: #{user_dir}"
         export_file "#{user_dir}/ca.crt", ca_cert.to_pem
         export_file "#{user_dir}/#{user_name}.crt", user_cert.to_pem
         export_file "#{user_dir}/#{user_name}.key", user_item['key'].to_s
