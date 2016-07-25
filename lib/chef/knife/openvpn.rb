@@ -141,18 +141,21 @@ module OpenvpnPlugin
       crl.version = 1
       crl.last_update = lastup
       crl.next_update = nextup
-      revoke_info.each do|rserial, time, reason_code|
+      revoke_info.each do |rserial, time, reason_code|
         revoked = OpenSSL::X509::Revoked.new
-        if rserial.is_a? OpenSSL::BN
-          revoked.serial = rserial
-        else
-          revoked.serial = OpenSSL::BN.new(rserial)
-        end
-        if time.is_a? Time
-          revoked.time = time
-        else
-          revoked.time = Time.parse(time)
-        end
+
+        revoked.serial = if rserial.is_a? OpenSSL::BN
+                           rserial
+                         else
+                           OpenSSL::BN.new(rserial)
+                         end
+
+        revoked.time = if time.is_a?
+                         time
+                       else
+                         Time.parse(time)
+                       end
+
         enum = OpenSSL::ASN1::Enumerated(reason_code)
         ext = OpenSSL::X509::Extension.new('CRLReason', enum)
         revoked.add_extension(ext)
@@ -163,7 +166,7 @@ module OpenvpnPlugin
       ef.crl = crl
       crlnum = OpenSSL::ASN1::Integer(serial)
       crl.add_extension(OpenSSL::X509::Extension.new('crlNumber', crlnum))
-      extensions.each do|oid, value, critical|
+      extensions.each do |oid, value, critical|
         crl.add_extension(ef.create_extension(oid, value, critical))
       end
       crl.sign(issuer_key, digest)
@@ -403,7 +406,7 @@ module OpenvpnPlugin
       query = "openvpn_server_name:#{server_name}"
       query_nodes = Chef::Search::Query.new
       search_result = query_nodes.search('node', query)[0]
-      if search_result.length < 1
+      if search_result.empty?
         fail_with "Cant find vpn server named '#{server_name}', chef search for node with attribute openvpn.server_name:#{server_name} return no result"
       end
       config_content = ''
@@ -415,7 +418,7 @@ module OpenvpnPlugin
       config_content << "proto  #{config['proto']}" << newline
       search_result.each do |result|
         config_content << "remote  #{result['openvpn'][server_name]['remote_host']} "
-        config_content << "#{config['port']}" << newline
+        config_content << config['port'].to_s << newline
       end
       config_content << "verb  #{config['verb']}" << newline
       config_content << 'comp-lzo' << newline
