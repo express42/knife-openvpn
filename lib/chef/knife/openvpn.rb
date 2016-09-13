@@ -417,8 +417,14 @@ module OpenvpnPlugin
       config_content << "dev  #{config['dev']}" << newline
       config_content << "proto  #{config['proto']}" << newline
       search_result.each do |result|
-        config_content << "remote  #{result['openvpn'][server_name]['remote_host']} "
-        config_content << config['port'].to_s << newline
+        if result['openvpn'][server_name]['remote'].nil?
+          config_content << "remote  #{result['openvpn'][server_name]['remote_host']} "
+          config_content << config['port'].to_s << newline
+        else
+          result['openvpn'][server_name]['remote'].each do |remote|
+            config_content << "remote  #{remote}" << newline
+          end
+        end
       end
       config_content << "verb  #{config['verb']}" << newline
       config_content << 'comp-lzo' << newline
